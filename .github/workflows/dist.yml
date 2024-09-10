@@ -61,3 +61,48 @@ jobs:
           name: input-leap-rpms-${{ matrix.rpm_tag }}
           path: |
             rpms/**/*.rpm
+
+  flatpak:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./input-leap
+    steps:
+      # submodules require git to be installed
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          path: input-leap
+          # submodules: recursive
+          set-safe-directory: ${{ github.workspace }}
+
+      - run: git config --global protocol.file.allow always
+
+      - name: Install flatpak and flatpak builder
+        run: sudo apt-get install -y flatpak flatpak-builder tree
+
+      - name: add flatpak remote
+        run: sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+
+      - name: Install flatpak dependencies
+        run: sudo flatpak install -y flathub org.kde.Sdk//5.15-23.08 org.kde.Platform//5.15-23.08
+
+      - run: mkdir build-dir
+
+      - name: build the flatpak
+        run: flatpak-builder --force-clean --repo repo-dir build-dir dist/flatpak/com.github.input-leap.input-leaps.yml
+
+      - name: build bundle
+        run: flatpak build-bundle repo-dir dist/flatpak/input-leap.flatpak com.github.inputleap.InputLeap
+
+      - name: Check to see the flatpak was built
+        run: |
+          pwd
+          tree -L 1 dist/flatpak
+
+      - name: Archive flatpak package
+        uses: actions/upload-artifact@v4
+        with:
+          name: input-leap.flatpak
+          path: |
+            input-leap/dist/flatpak/input-leap.flatpak

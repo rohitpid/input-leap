@@ -199,14 +199,6 @@ if (UNIX)
                 int main() { XdpOutputType out = XDP_OUTPUT_NONE; }
             " HAVE_LIBPORTAL_OUTPUT_NONE)
             cmake_pop_check_state()
-
-            if(INPUTLEAP_DEPLOY_FLATPAK_SCRIPT)
-                # Flatpak bits
-                install(FILES "dist/flatpak/input-leap-flatpak"
-                        DESTINATION bin
-                        PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-                )
-            endif()
         endif()
 
         check_include_files ("dns_sd.h" HAVE_DNSSD)
