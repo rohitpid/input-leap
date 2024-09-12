@@ -22,7 +22,6 @@ finish-args:
     - --filesystem=xdg-config/input-leap
     - --socket=x11
     - --socket=wayland
-    - --env=QT_QPA_PLATFORM=wayland
     - --device=dri           # For hardware acceleration if needed
 
 modules:
