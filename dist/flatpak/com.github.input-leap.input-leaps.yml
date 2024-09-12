@@ -11,7 +11,7 @@
 
 app-id: com.github.inputleap.InputLeap
 runtime: org.kde.Platform
-runtime-version: '5.15-23.08'
+runtime-version: '6.7'
 sdk: org.kde.Sdk
 command: input-leap
 
@@ -118,7 +118,7 @@ modules:
     - name: input-leap
       buildsystem: cmake
       config-opts:
-          - -DQT_DEFAULT_MAJOR_VERSION=5
+          - -DQT_DEFAULT_MAJOR_VERSION=6
           - -DINPUTLEAP_BUILD_GUI=ON
           - -DINPUTLEAP_BUILD_TESTS=OFF
           - -DINPUTLEAP_BUILD_INSTALLER=OFF
