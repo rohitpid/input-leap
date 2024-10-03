@@ -48,6 +48,23 @@ jobs:
     steps:
 
       # Preparation steps
+      - name: preinstall depends
+        run: |
+          apt-get update -y
+          # software-properties-common is needed for add-apt-repository
+          apt-get install -y software-properties-common gpg wget
+
+      - if: matrix.os == 'ubuntu:20.04'
+        name: Add repositories with newer git and cmake
+        run: |
+          # InputLeap requires at least CMake 3.21.
+          # This mirrors instructions at https://apt.kitware.com
+          wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null \
+            | gpg --dearmor - \
+            > /usr/share/keyrings/kitware-archive-keyring.gpg
+          echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ focal main' \
+            > /etc/apt/sources.list.d/kitware.list
+
       - name: Update image and install pre-reqs
         run: |
           apt-get update -y
@@ -58,7 +75,6 @@ jobs:
                   clang \
                   git \
                   libavahi-compat-libdnssd-dev \
-                  libcurl4-openssl-dev \
                   libice-dev \
                   libsm-dev \
                   libssl-dev \
@@ -196,12 +212,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # Print only what follows ^BuildRequires in the range of lines between %if 0%{?xxxx} and %endif where xxxx is the rpm_tag
-          sed -n '/^%if 0%{?${{ matrix.rpm_tag }}}$/,/^%endif$/{s/^BuildRequires: //p}' input-leap/dist/rpm/input-leap.spec.in | xargs ${{ matrix.installer }}
+          # Replace foo >= x with "foo >= x", print only what follows ^BuildRequires
+          sed -n 's/\(\S\+ [<>=]\+ [0-9]\+.\?[0-9]\?\)/"\1"/;{s/^BuildRequires: //p}' input-leap/dist/rpm/input-leap.spec.in | xargs ${{ matrix.installer }}
 
       - name: prep tree
         run: |
-          cmake -S input-leap -B build
+          cmake -S input-leap -B build -DINPUTLEAP_USE_EXTERNAL_GTEST=True
           make -C build package_source
 
       - name: create target directory
@@ -408,3 +424,63 @@ jobs:
           name: windows-installer
           path: .\build\installer-inno\bin
           if-no-files-found: error
+
+  freebsd-build:
+    name: freebsd-14-1
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build on FreeBSD 14.1
+      id: test
+      uses: vmactions/freebsd-vm@v1
+      with:
+        usesh: true
+        prepare: |
+          pkg install -y \
+              cmake-core \
+              pkgconf \
+              git \
+              avahi-libdns \
+              libsm \
+              libxinerama \
+              libxrandr \
+              libxtst \
+              libxkbcommon \
+              glib \
+              ninja \
+              qt6-base \
+              qt6-tools \
+              qt6-declarative
+
+        run: |
+          git config --global --add safe.directory /home/runner/work/input-leap/input-leap
+          git submodule update --init --recursive
+          mkdir build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=Debug -DINPUTLEAP_BUILD_INSTALLER=OFF ..
+          cmake --build .
+
+  flatpak:
+    runs-on: ubuntu-latest
+    container:
+      image: bilelmoussaoui/flatpak-github-actions:kde-6.7
+      options: --privileged
+    steps:
+      # submodules require git to be installed
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - run: git config --global protocol.file.allow always
+
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        name: "Build"
+        with:
+          bundle: input-leap.flatpak
+          manifest-path: dist/flatpak/io.github.input_leap.InputLeap.yml
+          cache-key: flatpak-builder-${{ github.sha }}
